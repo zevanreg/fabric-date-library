@@ -72,3 +72,23 @@ jobs:
           gh release create "$RELEASE_TAG" dist/*.whl dist/SHA256SUMS \
             --verify-tag --title "$RELEASE_TAG" \
             --notes "Versioned Python wheel and SHA-256 checksums. No PyPI publication."
+
+  notify-workloads:
+    needs: release
+    if: vars.WORKLOADS_REPOSITORY != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Request downstream pin update PR
+        env:
+          GH_TOKEN: ${{ secrets.WORKLOADS_DISPATCH_TOKEN }}
+          WORKLOADS_REPOSITORY: ${{ vars.WORKLOADS_REPOSITORY }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          if [[ -z "$GH_TOKEN" ]]; then
+            echo "Configure WORKLOADS_DISPATCH_TOKEN with downstream Actions write access." >&2
+            exit 1
+          fi
+          gh workflow run update-pin.yml --repo "$WORKLOADS_REPOSITORY" \
+            --ref main --field "tag=$RELEASE_TAG"

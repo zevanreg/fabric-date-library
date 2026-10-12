@@ -46,6 +46,9 @@ Development build tools are pinned; runtime dependencies are empty.
   `pyproject.toml` (initially `v0.1.0`). It builds once, installs and tests that
   wheel, then publishes it and `SHA256SUMS` to a GitHub Release. Only the release
   job has `contents: write`. Nothing is published to PyPI.
+- After publication, an optional `notify-workloads` job dispatches the consuming
+  repository's **Update library release pin** workflow, which verifies the assets
+  and opens a reviewed pin-only PR to `dev`. It does not deploy or auto-merge.
 
 After reviewing and committing the repository, configure a GitHub remote and
 push `main`, then create and push the version tag. Those remote operations are
@@ -57,6 +60,28 @@ The workflow does not overwrite existing releases or assets. Enable GitHub's
 **immutable releases** repository setting before publishing for server-enforced
 immutability; otherwise repository administrators can still edit/delete assets.
 Protect release tags and restrict who can create them.
+
+### Automatic consumer pin PR
+
+Publish the consumer's `update-pin.yml` workflow on `main` and its updater on
+`dev` before enabling notification. In this library repository, configure:
+
+| Setting | Value |
+| --- | --- |
+| Repository variable `WORKLOADS_REPOSITORY` | `zevanreg/fabric-wheel-workloads` |
+| Secret `WORKLOADS_DISPATCH_TOKEN` | Fine-grained PAT with consumer **Actions: read/write** access |
+
+In the consumer, configure secret `PIN_PR_TOKEN` with **Contents: read/write**
+and **Pull requests: read/write**, plus `GH_RELEASE_TOKEN` with library
+**Contents: read** if this library is private. The separate PR token ensures
+PR creation triggers the consumer's existing CI. Protect the consumer's `dev`
+and `main` branches and keep human review required.
+
+Without `WORKLOADS_REPOSITORY`, notification is skipped and release publication
+is unchanged. When enabled, a notification failure fails that job but leaves
+the published release intact. Retry by manually running the consumer's
+**Update library release pin** workflow on `main` with the exact published tag;
+do not recreate the release. This also bootstraps an already published `v0.1.0`.
 
 ## Downstream manual integration
 
