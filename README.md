@@ -1,0 +1,110 @@
+# Fabric date library
+
+A standalone, zero-runtime-dependency Python demo. It prints the current **UTC**
+date, not the workstation's local date. Requires Python 3.11 or newer.
+
+```python
+from demo_date import print_current_date
+
+print_current_date()  # For example: 2026-10-09
+```
+
+`current_date()` returns a `datetime.date`. Both functions accept an optional
+`datetime` or `date` for deterministic demos and tests. Aware datetimes are
+converted to UTC; naive datetimes are interpreted as UTC; dates are unchanged.
+
+## Local build and validation (PowerShell)
+
+```powershell
+Set-Location C:\repos\fabric-date-library
+python -m venv .venv
+$python = (Resolve-Path .venv\Scripts\python.exe).Path
+& $python -m pip install -r requirements-dev.txt
+& $python -m build --wheel
+& $python -m pip install --no-deps dist\demo_date-0.1.0-py3-none-any.whl
+$tests = (Resolve-Path tests).Path
+Push-Location ..
+try {
+    & $python -m unittest discover -s $tests -v
+    & $python -c "from demo_date import print_current_date; print_current_date()"
+} finally {
+    Pop-Location
+}
+Get-FileHash dist\demo_date-0.1.0-py3-none-any.whl -Algorithm SHA256
+```
+
+Tests deliberately run outside the repository against the installed wheel.
+The `src` layout avoids accidentally testing an uninstalled source package.
+Development build tools are pinned; runtime dependencies are empty.
+
+## GitHub CI and release
+
+- `ci.yml`: pushes to `main`, pull requests, or manual dispatch build a wheel,
+  install it, run standard-library `unittest` tests on Python 3.11, and retain
+  the wheel as an Actions artifact.
+- `release.yml`: a pushed `v*` tag must exactly match the version in
+  `pyproject.toml` (initially `v0.1.0`). It builds once, installs and tests that
+  wheel, then publishes it and `SHA256SUMS` to a GitHub Release. Only the release
+  job has `contents: write`. Nothing is published to PyPI.
+
+After reviewing and committing the repository, configure a GitHub remote and
+push `main`, then create and push the version tag. Those remote operations are
+not performed by the local setup. For every new release, bump the metadata
+version first, commit, and use a new tag. Do not move or reuse release tags.
+
+Initial asset: **`demo_date-0.1.0-py3-none-any.whl`**.
+The workflow does not overwrite existing releases or assets. Enable GitHub's
+**immutable releases** repository setting before publishing for server-enforced
+immutability; otherwise repository administrators can still edit/delete assets.
+Protect release tags and restrict who can create them.
+
+## Downstream manual integration
+
+Put this workflow in a consuming repository. Replace `YOUR_ORG` and pin the
+repository variable `DEMO_DATE_WHEEL_SHA256` to the wheel hash from a trusted
+release. Keep the tag, filename, and expected checksum pinned together when
+upgrading; never select a mutable `latest` asset.
+
+```yaml
+name: Run date demo
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Download pinned release wheel
+        env:
+          GH_TOKEN: ${{ secrets.LIBRARY_READ_TOKEN || github.token }}
+        run: |
+          gh release download v0.1.0 --repo YOUR_ORG/fabric-date-library \
+            --pattern demo_date-0.1.0-py3-none-any.whl
+      - name: Verify trusted checksum and install
+        env:
+          EXPECTED_SHA256: ${{ vars.DEMO_DATE_WHEEL_SHA256 }}
+        run: |
+          test "${#EXPECTED_SHA256}" -eq 64
+          printf '%s  %s\n' "$EXPECTED_SHA256" \
+            demo_date-0.1.0-py3-none-any.whl | sha256sum --check --strict
+          python -m pip install --no-deps demo_date-0.1.0-py3-none-any.whl
+      - name: Print current UTC date
+        run: python -c "from demo_date import print_current_date; print_current_date()"
+```
+
+For a private library repository, provide a narrowly scoped
+`LIBRARY_READ_TOKEN` secret with read access to that repository's contents.
+A consuming repository's default token normally cannot read another private
+repository. Public library releases can use the default token.
+
+For a Fabric notebook, first download and verify the same pinned wheel, upload
+it through your approved Fabric library/environment mechanism, then run the
+Python example above. This repository intentionally does not automate workspace
+deployment or contain tenant credentials.
+
+No license has been assigned; agree licensing before distributing beyond the
+authorized customer demo.
