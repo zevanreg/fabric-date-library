@@ -1,23 +1,27 @@
-"""Print today's date using UTC by default."""
+"""Print the current UTC date and time to whole seconds."""
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, time, timezone
 
 __all__ = ["current_date", "print_current_date"]
 
 
-def current_date(now: datetime | date | None = None) -> date:
-    """Return the UTC date; injected naive datetimes are interpreted as UTC."""
+def _current_datetime(now: datetime | date | None) -> datetime:
     if now is None:
-        return datetime.now(timezone.utc).date()
+        return datetime.now(timezone.utc)
     if isinstance(now, datetime):
         if now.tzinfo is None:
             now = now.replace(tzinfo=timezone.utc)
-        return now.astimezone(timezone.utc).date()
+        return now.astimezone(timezone.utc)
     if isinstance(now, date):
-        return now
+        return datetime.combine(now, time.min, tzinfo=timezone.utc)
     raise TypeError("now must be a datetime, date, or None")
 
 
+def current_date(now: datetime | date | None = None) -> date:
+    """Return the UTC date; injected naive datetimes are interpreted as UTC."""
+    return _current_datetime(now).date()
+
+
 def print_current_date(now: datetime | date | None = None) -> None:
-    """Print a single ISO 8601 date followed by a newline."""
-    print(current_date(now).isoformat(timespec="seconds"))
+    """Print an ISO 8601 UTC timestamp to seconds, followed by a newline."""
+    print(_current_datetime(now).isoformat(timespec="seconds"))

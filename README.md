@@ -1,17 +1,23 @@
 # Fabric date library
 
 A standalone, zero-runtime-dependency Python demo. It prints the current **UTC**
-date, not the workstation's local date. Requires Python 3.11 or newer.
+date and time to whole seconds, not the workstation's local time. Requires
+Python 3.11 or newer.
 
 ```python
 from demo_date import print_current_date
 
-print_current_date()  # For example: 2026-10-09
+print_current_date()  # For example: 2026-10-09T14:30:45+00:00
 ```
 
-`current_date()` returns a `datetime.date`. Both functions accept an optional
+`print_current_date()` prints `YYYY-MM-DDTHH:MM:SS+00:00` followed by a newline.
+The `+00:00` offset denotes UTC; fractional seconds are omitted. Date-only
+inputs print at midnight UTC (`00:00:00`).
+
+`current_date()` still returns a `datetime.date`. Both functions accept an optional
 `datetime` or `date` for deterministic demos and tests. Aware datetimes are
-converted to UTC; naive datetimes are interpreted as UTC; dates are unchanged.
+converted to UTC; naive datetimes are interpreted as UTC. For date-only text,
+use `current_date().isoformat()`.
 
 ## Local build and validation (PowerShell)
 
@@ -117,7 +123,7 @@ jobs:
           printf '%s  %s\n' "$EXPECTED_SHA256" \
             demo_date-0.1.0-py3-none-any.whl | sha256sum --check --strict
           python -m pip install --no-deps demo_date-0.1.0-py3-none-any.whl
-      - name: Print current UTC date
+      - name: Print current UTC date and time
         run: python -c "from demo_date import print_current_date; print_current_date()"
 ```
 
