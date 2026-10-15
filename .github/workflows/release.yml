@@ -90,5 +90,5 @@ jobs:
             echo "Configure WORKLOADS_DISPATCH_TOKEN with downstream Actions write access." >&2
             exit 1
           fi
-          gh workflow run update-pin.yml --repo "$WORKLOADS_REPOSITORY" \
+          gh workflow run wheel-update-pin.yml --repo "$WORKLOADS_REPOSITORY" \
             --ref main --field "tag=$RELEASE_TAG"
