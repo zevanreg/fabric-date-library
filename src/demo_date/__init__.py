@@ -20,4 +20,4 @@ def current_date(now: datetime | date | None = None) -> date:
 
 def print_current_date(now: datetime | date | None = None) -> None:
     """Print a single ISO 8601 date followed by a newline."""
-    print(current_date(now).isoformat())
+    print(current_date(now).isoformat(timespec="seconds"))
